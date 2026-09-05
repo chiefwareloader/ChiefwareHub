@@ -33,7 +33,9 @@ function UI:CreateWindow()
         User = {
             Enabled = true,
             Anonymous = false,
-            Callback = function() print("User clicked") end,
+            Callback = function() 
+                print("User clicked") 
+            end,
         },
     })
     
@@ -62,7 +64,7 @@ function UI:CreateWindow()
         Locked = false,
     })
     
-    print("UI Created!")
+    print("✅ UI Created!")
     return self
 end
 

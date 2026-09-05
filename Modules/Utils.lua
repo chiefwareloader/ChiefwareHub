@@ -1,7 +1,7 @@
 -- Utils.lua - Shared utility functions
 local Utils = {}
 
--- Find spawn locations
+-- Find spawn locations from PlayerSpawns
 function Utils.GetSpawnLocations()
     local locations = {}
     local playerSpawns = game.Workspace:FindFirstChild("_WorldOrigin")
@@ -55,7 +55,25 @@ function Utils.GetAllLocationNames(customLocations)
     return names
 end
 
--- Find island groups
+-- Get teleport position for a location
+function Utils.GetTeleportPosition(locationName, customLocations)
+    if customLocations and customLocations[locationName] then
+        return customLocations[locationName]
+    end
+    
+    local spawnLocations = Utils.GetSpawnLocations()
+    if spawnLocations[locationName] then
+        local locationData = spawnLocations[locationName]
+        if locationData.Parts and #locationData.Parts > 0 then
+            local randomPart = locationData.Parts[math.random(1, #locationData.Parts)]
+            return randomPart.CFrame + Vector3.new(0, 5, 0)
+        end
+    end
+    
+    return nil
+end
+
+-- Find island groups in workspace
 function Utils.FindIslandGroups()
     local islands = {}
     local excludeNames = {
@@ -75,7 +93,7 @@ function Utils.FindIslandGroups()
                 end
             end
             
-            if not shouldExclude then
+            if not shouldExclude and not string.match(name, "Player") then
                 table.insert(islands, child)
             end
         end
@@ -84,7 +102,7 @@ function Utils.FindIslandGroups()
     return islands
 end
 
--- Get model center
+-- Get model center position (above highest point)
 function Utils.GetModelCenter(model)
     local totalPos = Vector3.new(0, 0, 0)
     local count = 0
@@ -107,7 +125,7 @@ function Utils.GetModelCenter(model)
     return Vector3.new(totalPos.X / count, highestY + 15, totalPos.Z / count)
 end
 
--- Format distance
+-- Format distance for display
 function Utils.FormatDistance(distance)
     if distance >= 1000 then
         return string.format("%.1fkm", distance / 1000)

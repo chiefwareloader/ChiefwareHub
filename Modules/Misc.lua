@@ -24,8 +24,30 @@ function Misc:SetupUI()
 end
 
 function Misc:ToggleWaterWalk(state)
-    -- Your water walk logic here
-    -- (Copy the water walk toggle code)
+    print("Water Walk Toggled: " .. tostring(state))
+    
+    local worldOrigin = game.Workspace:FindFirstChild("_WorldOrigin")
+    if worldOrigin then
+        local waterCFrame = worldOrigin:FindFirstChild("WaterCFrame")
+        if waterCFrame then
+            local foam = waterCFrame:FindFirstChild("Foam;")
+            if foam and foam:IsA("BasePart") then
+                foam.CanCollide = state
+                
+                if state then
+                    print("✅ Water walk ENABLED")
+                else
+                    print("❌ Water walk DISABLED")
+                end
+            else
+                warn('"Foam;" not found in WaterCFrame!')
+            end
+        else
+            warn("WaterCFrame not found in _WorldOrigin!")
+        end
+    else
+        warn("_WorldOrigin not found in Workspace!")
+    end
 end
 
 return Misc
