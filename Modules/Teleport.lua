@@ -58,6 +58,17 @@ function Teleport:SetupUI()
             self:StopTeleport()
         end
     })
+
+    -- Sea Teleport Buttons
+
+    teleportTab:Button({
+    Title = "Teleport to First Sea",
+    Desc = "Teleports you to first sea",
+    Locked = false,
+    Callback = function()
+        -- ...
+    end
+})
     
     -- Speed slider
     settingsTab:Slider({
