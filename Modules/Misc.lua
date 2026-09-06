@@ -6,6 +6,11 @@ function Misc.new(shared, ui)
     local self = setmetatable({}, Misc)
     self.Shared = shared
     self.UI = ui
+    
+    -- Initialize variables
+    self.InfiniteJumpEnabled = false
+    self.infiniteJumpConnection = nil
+    
     return self
 end
 
@@ -24,14 +29,13 @@ function Misc:SetupUI()
 
     miscTab:Toggle({
         Title = "Infinite Jump",
-        Desc = "",
+        Desc = "Allows you to jump repeatedly in the air",
         Type = "Checkbox",
         Value = false,
         Callback = function(state)
             self:ToggleInfiniteJump(state)
         end
     })
-
 end
 
 function Misc:ToggleWaterWalk(state)
@@ -62,24 +66,29 @@ function Misc:ToggleWaterWalk(state)
 end
 
 function Misc:ToggleInfiniteJump(enable)
+    -- If same state, just return
     if enable == self.InfiniteJumpEnabled then
         return
     end
     
+    -- Update state FIRST
     self.InfiniteJumpEnabled = enable
     
+    -- Disconnect existing connection if any
     if self.infiniteJumpConnection then
         self.infiniteJumpConnection:Disconnect()
         self.infiniteJumpConnection = nil
     end
     
+    -- If enabling, create new connection
     if enable then
         self.infiniteJumpConnection = self.Shared.UserInputService.JumpRequest:Connect(function()
+            -- Only jump if enabled
             if self.InfiniteJumpEnabled then
                 local player = self.Shared.Players.LocalPlayer
                 if player and player.Character then
                     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
+                    if humanoid and humanoid.Health > 0 then
                         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     end
                 end
