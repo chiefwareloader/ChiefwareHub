@@ -47,13 +47,26 @@ function Visuals:EnableIslandESP()
     local islands = self.Utils.FindIslandGroups()
     print("Found " .. #islands .. " island groups for ESP")
     
+    -- CLEAR existing ESP objects first
+    for island, data in pairs(self.islandESPObjects) do
+        if data.Billboard and data.Billboard.Parent then
+            data.Billboard:Destroy()
+        end
+    end
+    self.islandESPObjects = {}  -- Clear the table
+    
+    -- Now create ESP for ALL islands
     for _, island in ipairs(islands) do
-        if not island:FindFirstChild("IslandESP_" .. island.Name) then
-            local espData = self:CreateIslandESP(island)
-            if espData then
-                self.islandESPObjects[island] = espData
-                print("ESP created for: " .. island.Name)
-            end
+        -- Remove any old ESP first
+        local existingESP = island:FindFirstChild("IslandESP_" .. island.Name)
+        if existingESP then
+            existingESP:Destroy()
+        end
+        
+        local espData = self:CreateIslandESP(island)
+        if espData then
+            self.islandESPObjects[island] = espData
+            print("ESP created for: " .. island.Name)
         end
     end
     
@@ -65,7 +78,7 @@ function Visuals:EnableIslandESP()
         self:UpdateDistanceLabels()
     end)
     
-    print("✅ Island ESP ENABLED")
+    print("✅ Island ESP ENABLED for " .. #self.islandESPObjects .. " islands")
 end
 
 function Visuals:DisableIslandESP()
@@ -95,7 +108,7 @@ function Visuals:CreateIslandESP(island)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "IslandESP_" .. island.Name
     billboard.Size = UDim2.new(0, 250, 0, 60)
-    billboard.StudsOffset = Vector3.new(0, 0, 0)
+    billboard.StudsOffset = Vector3.new(0, 30, 0)
     billboard.Adornee = island
     billboard.MaxDistance = 5000
     billboard.AlwaysOnTop = true
