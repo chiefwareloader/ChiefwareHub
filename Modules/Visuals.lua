@@ -11,6 +11,7 @@ function Visuals.new(shared, ui)
     self.isIslandESPEnabled = false
     self.islandESPObjects = {}
     self.islandESPConnections = {}
+    self.updateCooldown = 0
     
     return self
 end
@@ -44,15 +45,121 @@ function Visuals:ToggleIslandESP(enable)
     end
 end
 
+-- Get all island groups from _WorldOrigin.PlayerSpawns
+function Visuals:GetAllIslands()
+    local islands = {}
+    local worldOrigin = game.Workspace:FindFirstChild("_WorldOrigin")
+    if not worldOrigin then
+        warn("_WorldOrigin not found in Workspace!")
+        return islands
+    end
+    
+    local playerSpawns = worldOrigin:FindFirstChild("PlayerSpawns")
+    if not playerSpawns then
+        warn("PlayerSpawns not found inside _WorldOrigin!")
+        return islands
+    end
+    
+    local pirates = playerSpawns:FindFirstChild("Pirates")
+    if not pirates then
+        warn("Pirates not found inside PlayerSpawns!")
+        return islands
+    end
+    
+    for _, islandGroup in ipairs(pirates:GetChildren()) do
+        if islandGroup:IsA("Model") or islandGroup:IsA("Folder") or islandGroup:IsA("BasePart") then
+            table.insert(islands, islandGroup)
+        end
+    end
+    
+    return islands
+end
+
+-- Find one valid BasePart inside the island group to anchor the ESP
+function Visuals:GetIslandPart(islandGroup)
+    if islandGroup:IsA("BasePart") then
+        return islandGroup
+    end
+    
+    return islandGroup:FindFirstChildWhichIsA("BasePart", true)
+end
+
+-- Create ESP for an island group
+function Visuals:CreateIslandESP(islandGroup)
+    local targetPart = self:GetIslandPart(islandGroup)
+    if not targetPart then
+        return nil
+    end
+
+    -- Clear existing ESP on this group if re-enabling
+    local old = islandGroup:FindFirstChild("ESP_" .. islandGroup.Name)
+    if old then old:Destroy() end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_" .. islandGroup.Name
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 30, 0)
+    billboard.Adornee = targetPart
+    billboard.MaxDistance = math.huge
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = true
+    billboard.Parent = islandGroup
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    frame.BackgroundTransparency = 0.25
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = Color3.fromRGB(100, 200, 255)
+    frame.Parent = billboard
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = islandGroup.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 15
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextStrokeTransparency = 0.3
+    nameLabel.Parent = frame
+    
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.Text = "Calculating..."
+    distLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+    distLabel.TextSize = 13
+    distLabel.Font = Enum.Font.GothamMedium
+    distLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distLabel.TextStrokeTransparency = 0.3
+    distLabel.Parent = frame
+    
+    return {
+        Billboard = billboard,
+        Frame = frame,
+        NameLabel = nameLabel,
+        DistLabel = distLabel,
+        TargetPart = targetPart
+    }
+end
+
 function Visuals:EnableIslandESP()
     -- Clear any existing ESP instances first
     self:ClearESP()
     
-    local islands = self.Utils.FindIslandGroups()
+    local islands = self:GetAllIslands()
     print("Found " .. #islands .. " island groups for ESP")
     
-    -- If no islands found in Map, fallback search in Workspace
     if #islands == 0 then
+        warn("No islands found in PlayerSpawns! Falling back to workspace search...")
+        -- Fallback: search in Workspace
         for _, child in ipairs(game.Workspace:GetChildren()) do
             if child:IsA("Model") then
                 local name = child.Name
@@ -67,26 +174,36 @@ function Visuals:EnableIslandESP()
         end
     end
     
-    -- Create ESP for ALL islands synchronously (NO task.wait inside loop)
-    for _, island in ipairs(islands) do
-        if not self.isIslandESPEnabled then break end -- Stop if toggled off mid-execution
+    -- Create ESP for ALL islands
+    local created = 0
+    for _, islandGroup in ipairs(islands) do
+        if not self.isIslandESPEnabled then break end
         
-        local espData = self:CreateIslandESP(island)
+        local espData = self:CreateIslandESP(islandGroup)
         if espData then
-            self.islandESPObjects[island] = espData
+            self.islandESPObjects[islandGroup] = espData
+            created = created + 1
         end
     end
+    
+    -- Update distances once immediately
+    self:UpdateDistanceLabels()
     
     -- Heartbeat loop for distance updates
     if self.islandESPConnections.UpdateConnection then
         self.islandESPConnections.UpdateConnection:Disconnect()
     end
     
-    self.islandESPConnections.UpdateConnection = self.Shared.RunService.Heartbeat:Connect(function()
-        self:UpdateDistanceLabels()
+    self.islandESPConnections.UpdateConnection = self.Shared.RunService.Heartbeat:Connect(function(dt)
+        if not self.isIslandESPEnabled then return end
+        self.updateCooldown = self.updateCooldown + dt
+        if self.updateCooldown >= 0.1 then
+            self.updateCooldown = 0
+            self:UpdateDistanceLabels()
+        end
     end)
     
-    print("✅ Island ESP ENABLED for " .. tostring(self:GetTableSize(self.islandESPObjects)) .. " islands")
+    print("✅ Island ESP ENABLED for " .. tostring(created) .. " islands")
 end
 
 function Visuals:ClearESP()
@@ -99,7 +216,7 @@ function Visuals:ClearESP()
     
     -- Cleanup orphaned billboards
     for _, child in ipairs(game.Workspace:GetDescendants()) do
-        if child:IsA("BillboardGui") and string.match(child.Name, "^IslandESP_") then
+        if child:IsA("BillboardGui") and string.match(child.Name, "^ESP_") then
             child:Destroy()
         end
     end
@@ -118,72 +235,6 @@ function Visuals:DisableIslandESP()
     print("❌ Island ESP DISABLED")
 end
 
-function Visuals:CreateIslandESP(island)
-    local targetPart = island:IsA("BasePart") and island or island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart", true)
-    if not targetPart then
-        return nil
-    end
-    
-    -- Remove old Billboard if present
-    local existing = island:FindFirstChild("IslandESP_" .. island.Name)
-    if existing then existing:Destroy() end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "IslandESP_" .. island.Name
-    billboard.Size = UDim2.new(0, 250, 0, 60)
-    billboard.StudsOffset = Vector3.new(0, 30, 0)
-    billboard.Adornee = targetPart
-    billboard.MaxDistance = 100000 -- High distance cap to prevent pop-in hiding
-    billboard.AlwaysOnTop = true
-    billboard.Enabled = true
-    billboard.ClipsDescendants = false
-    billboard.Parent = island
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "MainFrame"
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 0.15
-    frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(100, 150, 255)
-    frame.Parent = billboard
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    nameLabel.Position = UDim2.new(0, 10, 0, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = island.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 16
-    nameLabel.TextFont = Enum.Font.GothamBold
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = frame
-    
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Name = "DistanceLabel"
-    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 10, 0.5, 0)
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.Text = "0m"
-    distanceLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
-    distanceLabel.TextSize = 14
-    distanceLabel.TextFont = Enum.Font.GothamMedium
-    distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-    distanceLabel.Parent = frame
-    
-    return {
-        Billboard = billboard,
-        NameLabel = nameLabel,
-        DistanceLabel = distanceLabel,
-        Frame = frame
-    }
-end
-
 function Visuals:UpdateDistanceLabels()
     if not self.isIslandESPEnabled then return end
     
@@ -195,13 +246,25 @@ function Visuals:UpdateDistanceLabels()
     
     local characterPos = charPart.Position
     
-    for island, data in pairs(self.islandESPObjects) do
-        if data.Billboard and data.Billboard.Adornee then
-            local targetPos = data.Billboard.Adornee.Position
-            local distance = (targetPos - characterPos).Magnitude
+    for islandGroup, data in pairs(self.islandESPObjects) do
+        if data and data.DistLabel and data.TargetPart and data.TargetPart.Parent then
+            local dist = (data.TargetPart.Position - characterPos).Magnitude
             
-            if data.DistanceLabel then
-                data.DistanceLabel.Text = "📍 " .. self.Utils.FormatDistance(distance)
+            -- Format distance
+            local text = dist >= 1000 and string.format("%.1f km", dist / 1000) or math.floor(dist) .. " m"
+            data.DistLabel.Text = text
+            
+            -- Color code based on distance
+            if data.Frame then
+                if dist < 500 then
+                    data.Frame.BorderColor3 = Color3.fromRGB(0, 255, 100)
+                elseif dist < 1500 then
+                    data.Frame.BorderColor3 = Color3.fromRGB(255, 200, 50)
+                elseif dist < 5000 then
+                    data.Frame.BorderColor3 = Color3.fromRGB(255, 150, 50)
+                else
+                    data.Frame.BorderColor3 = Color3.fromRGB(100, 150, 255)
+                end
             end
         end
     end
