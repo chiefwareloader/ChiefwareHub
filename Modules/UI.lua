@@ -38,6 +38,12 @@ function UI:CreateWindow()
             end,
         },
     })
+
+     self.Tabs.Farm = self.Window:Tab({
+        Title = "Farm",
+        Icon = "earth",
+        Locked = false,
+    })
     
     -- Create tabs
     self.Tabs.Teleport = self.Window:Tab({
