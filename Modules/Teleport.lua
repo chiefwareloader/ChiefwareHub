@@ -38,7 +38,7 @@ function Teleport:SetupUI()
     -- Location dropdown
     teleportTab:Dropdown({
         Title = "Location Teleport",
-        Desc = "Teleports you to a location (pauses every 3s)",
+        Desc = "Teleports you to a location",
         Values = locationNames,
         Value = locationNames[1] or "No locations found",
         Callback = function(option)
@@ -62,8 +62,8 @@ function Teleport:SetupUI()
     -- Sea Teleport Buttons
 
     local Button = teleportTab:Button({
-    Title = "Button",
-    Desc = "Test Button",
+    Title = "Teleport to first sea",
+    Desc = "",
     Locked = false,
     Callback = function()
         -- ...
