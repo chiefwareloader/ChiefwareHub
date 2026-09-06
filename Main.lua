@@ -15,7 +15,7 @@ local Shared = {
 
 -- Load modules
 local Modules = {}
-local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"}
+local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"} -- Added "Farm" here
 
 for _, name in ipairs(moduleNames) do
     local url = "https://raw.githubusercontent.com/chiefwareloader/ChiefwareHub/main/Modules/" .. name .. ".lua"
@@ -36,7 +36,12 @@ local UI = Modules.UI.new(Shared)
 local Teleport = Modules.Teleport.new(Shared, UI)
 local Visuals = Modules.Visuals.new(Shared, UI)
 local Misc = Modules.Misc.new(Shared, UI)
-local Farm = Modules.Farm.new(Shared, UI)
+
+-- Only initialize Farm if it was loaded successfully
+local Farm = nil
+if Modules.Farm then
+    Farm = Modules.Farm.new(Shared, UI)
+end
 
 -- Setup UI
 UI:CreateWindow()
@@ -45,6 +50,10 @@ UI:CreateWindow()
 Teleport:SetupUI()
 Visuals:SetupUI()
 Misc:SetupUI()
-Farm:SetupUI()
+
+-- Only setup Farm UI if it was loaded
+if Farm then
+    Farm:SetupUI()
+end
 
 print("✅ Chiefware Hub loaded successfully!")
