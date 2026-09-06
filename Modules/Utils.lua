@@ -87,7 +87,7 @@ function Utils.FindIslandGroups()
     -- Go through each child in Map
     for _, child in ipairs(mapFolder:GetChildren()) do
         -- Only include Models (groups), not Folders or Parts
-        if child:IsA("Model") then
+        if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") then
             local name = child.Name
             -- Exclude common non-island objects
             if name ~= "Players" and 
@@ -97,7 +97,9 @@ function Utils.FindIslandGroups()
                name ~= "Sounds" and
                not string.match(name, "^_") and
                not string.match(name, "Spawn") and
-               not string.match(name, "Water") then
+               not string.match(name, "Water") and
+               not string.match(name, "Sky") and
+               not string.match(name, "Effect") then
                 table.insert(islands, child)
                 print("Found island: " .. name)
             end

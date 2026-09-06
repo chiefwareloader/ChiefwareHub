@@ -35,6 +35,8 @@ function Visuals:ToggleIslandESP(enable)
     end
     
     if enable then
+        -- Force reset before enabling
+        self:ResetESP()
         self:EnableIslandESP()
     else
         self:DisableIslandESP()
@@ -44,20 +46,51 @@ end
 function Visuals:EnableIslandESP()
     self.isIslandESPEnabled = true
     
+    -- Wait a frame to ensure everything is loaded
+    task.wait(0.1)
+    
     local islands = self.Utils.FindIslandGroups()
     print("Found " .. #islands .. " island groups for ESP")
     
-    -- CLEAR existing ESP objects first
+    -- If no islands found, try searching in a different way
+    if #islands == 0 then
+        print("No islands found in Map folder, searching workspace...")
+        -- Search the entire workspace for models with HumanoidRootPart
+        for _, child in ipairs(game.Workspace:GetChildren()) do
+            if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") then
+                local name = child.Name
+                if name ~= "Players" and 
+                   name ~= "Terrain" and 
+                   name ~= "Camera" and 
+                   name ~= "Lighting" and
+                   not string.match(name, "^_") then
+                    table.insert(islands, child)
+                    print("Found island in workspace: " .. name)
+                end
+            end
+        end
+    end
+    
+    -- Clear existing ESP objects completely
     for island, data in pairs(self.islandESPObjects) do
-        if data.Billboard and data.Billboard.Parent then
+        if data and data.Billboard and data.Billboard.Parent then
             data.Billboard:Destroy()
         end
     end
-    self.islandESPObjects = {}  -- Clear the table
+    self.islandESPObjects = {}
     
-    -- Now create ESP for ALL islands
+    -- Also clear any orphaned ESP objects in the workspace
     for _, island in ipairs(islands) do
-        -- Remove any old ESP first
+        local existingESP = island:FindFirstChild("IslandESP_" .. island.Name)
+        if existingESP then
+            existingESP:Destroy()
+            print("Removed old ESP from: " .. island.Name)
+        end
+    end
+    
+    -- Create ESP for ALL islands
+    for _, island in ipairs(islands) do
+        -- Double check if ESP exists and remove it
         local existingESP = island:FindFirstChild("IslandESP_" .. island.Name)
         if existingESP then
             existingESP:Destroy()
@@ -79,6 +112,32 @@ function Visuals:EnableIslandESP()
     end)
     
     print("✅ Island ESP ENABLED for " .. #self.islandESPObjects .. " islands")
+end
+
+function Visuals:ResetESP()
+    -- Clear all ESP objects
+    for island, data in pairs(self.islandESPObjects) do
+        if data and data.Billboard and data.Billboard.Parent then
+            data.Billboard:Destroy()
+        end
+    end
+    self.islandESPObjects = {}
+    
+    -- Remove any orphaned ESP from workspace
+    for _, child in ipairs(game.Workspace:GetDescendants()) do
+        if child:IsA("BillboardGui") and string.match(child.Name, "^IslandESP_") then
+            child:Destroy()
+            print("Removed orphaned ESP: " .. child.Name)
+        end
+    end
+    
+    if self.islandESPConnections.UpdateConnection then
+        self.islandESPConnections.UpdateConnection:Disconnect()
+        self.islandESPConnections.UpdateConnection = nil
+    end
+    
+    self.isIslandESPEnabled = false
+    print("🔄 ESP Reset Complete")
 end
 
 function Visuals:DisableIslandESP()
