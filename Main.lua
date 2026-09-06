@@ -15,7 +15,7 @@ local Shared = {
 
 -- Load modules
 local Modules = {}
-local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc"}
+local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"}
 
 for _, name in ipairs(moduleNames) do
     local url = "https://raw.githubusercontent.com/chiefwareloader/ChiefwareHub/main/Modules/" .. name .. ".lua"
