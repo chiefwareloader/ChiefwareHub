@@ -66,7 +66,7 @@ function Teleport:SetupUI()
     Desc = "Teleports you to first sea",
     Locked = false,
     Callback = function()
-        -- ...
+        print("teleport first sea test")
     end
 })
     
