@@ -61,12 +61,12 @@ function Teleport:SetupUI()
 
     -- Sea Teleport Buttons
 
-    teleportTab:Button({
-    Title = "Teleport to First Sea",
-    Desc = "Teleports you to first sea",
+    local Button = teleportTab:Button({
+    Title = "Button",
+    Desc = "Test Button",
     Locked = false,
     Callback = function()
-        print("teleport first sea test")
+        -- ...
     end
 })
     
