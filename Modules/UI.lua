@@ -39,36 +39,22 @@ function UI:CreateWindow()
         },
     })
 
-     self.Tabs.Farm = self.Window:Tab({
-        Title = "Farm",
-        Icon = "earth",
-        Locked = false,
-    })
+    -- Create tabs with consistent naming
+    local tabConfigs = {
+        Farm = { Title = "Farm", Icon = "earth" },
+        Teleport = { Title = "Teleport", Icon = "earth" },
+        Visuals = { Title = "Visuals", Icon = "eye" },
+        Misc = { Title = "Misc", Icon = "badge-plus" },
+        Settings = { Title = "Settings", Icon = "settings" }
+    }
     
-    -- Create tabs
-    self.Tabs.Teleport = self.Window:Tab({
-        Title = "Teleport",
-        Icon = "earth",
-        Locked = false,
-    })
-    
-    self.Tabs.Visuals = self.Window:Tab({
-        Title = "Visuals",
-        Icon = "eye",
-        Locked = false,
-    })
-    
-    self.Tabs.Misc = self.Window:Tab({
-        Title = "Misc",
-        Icon = "badge-plus",
-        Locked = false,
-    })
-    
-    self.Tabs.Settings = self.Window:Tab({
-        Title = "Settings",
-        Icon = "settings",
-        Locked = false,
-    })
+    for name, config in pairs(tabConfigs) do
+        self.Tabs[name] = self.Window:Tab({
+            Title = config.Title,
+            Icon = config.Icon,
+            Locked = false,
+        })
+    end
     
     print("✅ UI Created!")
     return self

@@ -15,45 +15,42 @@ local Shared = {
 
 -- Load modules
 local Modules = {}
-local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"} -- Added "Farm" here
+local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"}
 
 for _, name in ipairs(moduleNames) do
     local url = "https://raw.githubusercontent.com/chiefwareloader/ChiefwareHub/main/Modules/" .. name .. ".lua"
-    local success, module = pcall(function()
+    local success, result = pcall(function()
         return loadstring(game:HttpGet(url))()
     end)
     
-    if success and module then
-        Modules[name] = module
+    if success and result then
+        Modules[name] = result
         print("✅ Loaded module: " .. name)
     else
         warn("❌ Failed to load module: " .. name)
     end
 end
 
+-- Check if UI module loaded
+if not Modules.UI then
+    error("UI module failed to load!")
+    return
+end
+
 -- Initialize modules
 local UI = Modules.UI.new(Shared)
-local Teleport = Modules.Teleport.new(Shared, UI)
-local Visuals = Modules.Visuals.new(Shared, UI)
-local Misc = Modules.Misc.new(Shared, UI)
-
--- Only initialize Farm if it was loaded successfully
-local Farm = nil
-if Modules.Farm then
-    Farm = Modules.Farm.new(Shared, UI)
-end
+local Teleport = Modules.Teleport and Modules.Teleport.new(Shared, UI)
+local Visuals = Modules.Visuals and Modules.Visuals.new(Shared, UI)
+local Misc = Modules.Misc and Modules.Misc.new(Shared, UI)
+local Farm = Modules.Farm and Modules.Farm.new(Shared, UI)
 
 -- Setup UI
 UI:CreateWindow()
 
 -- Setup features
-Teleport:SetupUI()
-Visuals:SetupUI()
-Misc:SetupUI()
-
--- Only setup Farm UI if it was loaded
-if Farm then
-    Farm:SetupUI()
-end
+if Teleport then Teleport:SetupUI() end
+if Visuals then Visuals:SetupUI() end
+if Misc then Misc:SetupUI() end
+if Farm then Farm:SetupUI() end
 
 print("✅ Chiefware Hub loaded successfully!")
