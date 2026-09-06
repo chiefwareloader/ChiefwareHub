@@ -77,19 +77,16 @@ end
 function Utils.FindIslandGroups()
     local islands = {}
     
-    -- Find the Map folder in workspace
     local mapFolder = game.Workspace:FindFirstChild("Map")
     if not mapFolder then
         warn("Map folder not found in Workspace!")
         return islands
     end
     
-    -- Go through each child in Map
     for _, child in ipairs(mapFolder:GetChildren()) do
-        -- Only include Models (groups), not Folders or Parts
-        if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") then
+        -- Accept models or parts that aren't excluded
+        if child:IsA("Model") or child:IsA("BasePart") then
             local name = child.Name
-            -- Exclude common non-island objects
             if name ~= "Players" and 
                name ~= "Terrain" and 
                name ~= "Camera" and 
