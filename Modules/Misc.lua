@@ -21,6 +21,17 @@ function Misc:SetupUI()
             self:ToggleWaterWalk(state)
         end
     })
+
+    miscTab:Toggle({
+        Title = "Infinite Jump",
+        Desc = "",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(state)
+            self:ToggleInfiniteJump(state)
+        end
+    })
+
 end
 
 function Misc:ToggleWaterWalk(state)
@@ -47,6 +58,36 @@ function Misc:ToggleWaterWalk(state)
         end
     else
         warn("_WorldOrigin not found in Workspace!")
+    end
+end
+
+function Misc:ToggleInfiniteJump(enable)
+    if enable == self.InfiniteJumpEnabled then
+        return
+    end
+    
+    self.InfiniteJumpEnabled = enable
+    
+    if self.infiniteJumpConnection then
+        self.infiniteJumpConnection:Disconnect()
+        self.infiniteJumpConnection = nil
+    end
+    
+    if enable then
+        self.infiniteJumpConnection = self.Shared.UserInputService.JumpRequest:Connect(function()
+            if self.InfiniteJumpEnabled then
+                local player = self.Shared.Players.LocalPlayer
+                if player and player.Character then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end
+            end
+        end)
+        print("✅ Infinite Jump ENABLED")
+    else
+        print("❌ Infinite Jump DISABLED")
     end
 end
 
