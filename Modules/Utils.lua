@@ -73,32 +73,38 @@ function Utils.GetTeleportPosition(locationName, customLocations)
     return nil
 end
 
--- Find island groups in workspace
+-- Find island in workspace
 function Utils.FindIslandGroups()
     local islands = {}
-    local excludeNames = {
-        "Players", "Terrain", "_WorldOrigin", "Camera", 
-        "Lighting", "Sounds", "Water", "Spawn"
-    }
     
-    for _, child in ipairs(game.Workspace:GetChildren()) do
+    -- Find the Map folder in workspace
+    local mapFolder = game.Workspace:FindFirstChild("Map")
+    if not mapFolder then
+        warn("Map folder not found in Workspace!")
+        return islands
+    end
+    
+    -- Go through each child in Map
+    for _, child in ipairs(mapFolder:GetChildren()) do
+        -- Only include Models (groups), not Folders or Parts
         if child:IsA("Model") then
             local name = child.Name
-            local shouldExclude = false
-            
-            for _, exclude in ipairs(excludeNames) do
-                if string.match(name, exclude) or string.match(name, "^_") then
-                    shouldExclude = true
-                    break
-                end
-            end
-            
-            if not shouldExclude and not string.match(name, "Player") then
+            -- Exclude common non-island objects
+            if name ~= "Players" and 
+               name ~= "Terrain" and 
+               name ~= "Camera" and 
+               name ~= "Lighting" and 
+               name ~= "Sounds" and
+               not string.match(name, "^_") and
+               not string.match(name, "Spawn") and
+               not string.match(name, "Water") then
                 table.insert(islands, child)
+                print("Found island: " .. name)
             end
         end
     end
     
+    print("Found " .. #islands .. " islands in Map")
     return islands
 end
 
