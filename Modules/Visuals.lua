@@ -17,6 +17,7 @@ end
 
 function Visuals:SetupUI()
     local visualsTab = self.UI:GetTab("Visuals")
+    if not visualsTab then return end
     
     visualsTab:Toggle({
         Title = "Island ESP",
@@ -34,9 +35,9 @@ function Visuals:ToggleIslandESP(enable)
         return
     end
     
+    self.isIslandESPEnabled = enable
+    
     if enable then
-        -- Force reset before enabling
-        self:ResetESP()
         self:EnableIslandESP()
     else
         self:DisableIslandESP()
@@ -44,20 +45,16 @@ function Visuals:ToggleIslandESP(enable)
 end
 
 function Visuals:EnableIslandESP()
-    self.isIslandESPEnabled = true
-    
-    -- Wait a frame to ensure everything is loaded
-    task.wait(0.1)
+    -- Clear any existing ESP instances first
+    self:ClearESP()
     
     local islands = self.Utils.FindIslandGroups()
     print("Found " .. #islands .. " island groups for ESP")
     
-    -- If no islands found, try searching in a different way
+    -- If no islands found in Map, fallback search in Workspace
     if #islands == 0 then
-        print("No islands found in Map folder, searching workspace...")
-        -- Search the entire workspace for models with HumanoidRootPart
         for _, child in ipairs(game.Workspace:GetChildren()) do
-            if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") then
+            if child:IsA("Model") then
                 local name = child.Name
                 if name ~= "Players" and 
                    name ~= "Terrain" and 
@@ -65,44 +62,22 @@ function Visuals:EnableIslandESP()
                    name ~= "Lighting" and
                    not string.match(name, "^_") then
                     table.insert(islands, child)
-                    print("Found island in workspace: " .. name)
                 end
             end
         end
     end
     
-    -- Clear existing ESP objects completely
-    for island, data in pairs(self.islandESPObjects) do
-        if data and data.Billboard and data.Billboard.Parent then
-            data.Billboard:Destroy()
-        end
-    end
-    self.islandESPObjects = {}
-    
-    -- Also clear any orphaned ESP objects in the workspace
+    -- Create ESP for ALL islands synchronously (NO task.wait inside loop)
     for _, island in ipairs(islands) do
-        local existingESP = island:FindFirstChild("IslandESP_" .. island.Name)
-        if existingESP then
-            existingESP:Destroy()
-            print("Removed old ESP from: " .. island.Name)
-        end
-    end
-    
-    -- Create ESP for ALL islands
-    for _, island in ipairs(islands) do
-        -- Double check if ESP exists and remove it
-        local existingESP = island:FindFirstChild("IslandESP_" .. island.Name)
-        if existingESP then
-            existingESP:Destroy()
-        end
+        if not self.isIslandESPEnabled then break end -- Stop if toggled off mid-execution
         
         local espData = self:CreateIslandESP(island)
         if espData then
             self.islandESPObjects[island] = espData
-            print("ESP created for: " .. island.Name)
         end
     end
     
+    -- Heartbeat loop for distance updates
     if self.islandESPConnections.UpdateConnection then
         self.islandESPConnections.UpdateConnection:Disconnect()
     end
@@ -111,44 +86,29 @@ function Visuals:EnableIslandESP()
         self:UpdateDistanceLabels()
     end)
     
-    print("✅ Island ESP ENABLED for " .. #self.islandESPObjects .. " islands")
+    print("✅ Island ESP ENABLED for " .. tostring(self:GetTableSize(self.islandESPObjects)) .. " islands")
 end
 
-function Visuals:ResetESP()
-    -- Clear all ESP objects
+function Visuals:ClearESP()
     for island, data in pairs(self.islandESPObjects) do
-        if data and data.Billboard and data.Billboard.Parent then
+        if data and data.Billboard then
             data.Billboard:Destroy()
         end
     end
     self.islandESPObjects = {}
     
-    -- Remove any orphaned ESP from workspace
+    -- Cleanup orphaned billboards
     for _, child in ipairs(game.Workspace:GetDescendants()) do
         if child:IsA("BillboardGui") and string.match(child.Name, "^IslandESP_") then
             child:Destroy()
-            print("Removed orphaned ESP: " .. child.Name)
         end
     end
-    
-    if self.islandESPConnections.UpdateConnection then
-        self.islandESPConnections.UpdateConnection:Disconnect()
-        self.islandESPConnections.UpdateConnection = nil
-    end
-    
-    self.isIslandESPEnabled = false
-    print("🔄 ESP Reset Complete")
 end
 
 function Visuals:DisableIslandESP()
     self.isIslandESPEnabled = false
     
-    for island, data in pairs(self.islandESPObjects) do
-        if data.Billboard and data.Billboard.Parent then
-            data.Billboard:Destroy()
-        end
-    end
-    self.islandESPObjects = {}
+    self:ClearESP()
     
     if self.islandESPConnections.UpdateConnection then
         self.islandESPConnections.UpdateConnection:Disconnect()
@@ -159,23 +119,21 @@ function Visuals:DisableIslandESP()
 end
 
 function Visuals:CreateIslandESP(island)
-    local centerPos = self.Utils.GetModelCenter(island)
-    if not centerPos then
-        return nil
-    end
-    
-    -- Find a target part for Adornee
     local targetPart = island:IsA("BasePart") and island or island.PrimaryPart or island:FindFirstChildWhichIsA("BasePart", true)
     if not targetPart then
         return nil
     end
     
+    -- Remove old Billboard if present
+    local existing = island:FindFirstChild("IslandESP_" .. island.Name)
+    if existing then existing:Destroy() end
+    
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "IslandESP_" .. island.Name
     billboard.Size = UDim2.new(0, 250, 0, 60)
     billboard.StudsOffset = Vector3.new(0, 30, 0)
-    billboard.Adornee = targetPart -- Set to actual BasePart
-    billboard.MaxDistance = 50000 -- Increased so far away islands aren't hidden
+    billboard.Adornee = targetPart
+    billboard.MaxDistance = 100000 -- High distance cap to prevent pop-in hiding
     billboard.AlwaysOnTop = true
     billboard.Enabled = true
     billboard.ClipsDescendants = false
@@ -194,121 +152,65 @@ function Visuals:CreateIslandESP(island)
     corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = frame
     
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 40, 60)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 15, 30))
-    })
-    gradient.Parent = frame
-    
-    local glowFrame = Instance.new("Frame")
-    glowFrame.Name = "GlowFrame"
-    glowFrame.Size = UDim2.new(1.04, 0, 1.08, 0)
-    glowFrame.Position = UDim2.new(-0.02, 0, -0.04, 0)
-    glowFrame.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
-    glowFrame.BackgroundTransparency = 0.6
-    glowFrame.BorderSizePixel = 0
-    glowFrame.Parent = frame
-    
-    local glowCorner = Instance.new("UICorner")
-    glowCorner.CornerRadius = UDim.new(0, 14)
-    glowCorner.Parent = glowFrame
-    
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
     nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.Position = UDim2.new(0, 10, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = island.Name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 18
+    nameLabel.TextSize = 16
     nameLabel.TextFont = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.TextYAlignment = Enum.TextYAlignment.Bottom
-    nameLabel.TextScaled = false
     nameLabel.Parent = frame
     
     local distanceLabel = Instance.new("TextLabel")
     distanceLabel.Name = "DistanceLabel"
     distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 10, 0.5, 0)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.Text = "0m"
     distanceLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
-    distanceLabel.TextSize = 16
+    distanceLabel.TextSize = 14
     distanceLabel.TextFont = Enum.Font.GothamMedium
     distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-    distanceLabel.TextYAlignment = Enum.TextYAlignment.Top
-    distanceLabel.TextScaled = false
     distanceLabel.Parent = frame
-    
-    local indicator = Instance.new("Frame")
-    indicator.Name = "Indicator"
-    indicator.Size = UDim2.new(0, 10, 0, 10)
-    indicator.Position = UDim2.new(1, -20, 0.5, -5)
-    indicator.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
-    indicator.BackgroundTransparency = 0.3
-    indicator.BorderSizePixel = 0
-    indicator.Parent = frame
-    
-    local indicatorCorner = Instance.new("UICorner")
-    indicatorCorner.CornerRadius = UDim.new(1, 0)
-    indicatorCorner.Parent = indicator
-    
-    self.Shared.TweenService:Create(
-        indicator,
-        TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-        {BackgroundTransparency = 0.7}
-    ):Play()
     
     return {
         Billboard = billboard,
         NameLabel = nameLabel,
         DistanceLabel = distanceLabel,
-        Indicator = indicator,
-        Frame = frame,
-        GlowFrame = glowFrame
+        Frame = frame
     }
 end
 
 function Visuals:UpdateDistanceLabels()
-    if not self.isIslandESPEnabled then
-        return
-    end
+    if not self.isIslandESPEnabled then return end
     
     local player = self.Shared.Players.LocalPlayer
-    if not player or not player.Character then
-        return
-    end
+    if not player or not player.Character then return end
     
-    local characterPos = player.Character.PrimaryPart and player.Character.PrimaryPart.Position or player.Character.HumanoidRootPart.Position
+    local charPart = player.Character.PrimaryPart or player.Character:FindFirstChild("HumanoidRootPart")
+    if not charPart then return end
+    
+    local characterPos = charPart.Position
     
     for island, data in pairs(self.islandESPObjects) do
         if data.Billboard and data.Billboard.Adornee then
-            local centerPos = self.Utils.GetModelCenter(island)
-            if centerPos then
-                local distance = (centerPos - characterPos).Magnitude
-                local distanceText = self.Utils.FormatDistance(distance)
-                
-                if data.DistanceLabel then
-                    data.DistanceLabel.Text = "📍 " .. distanceText
-                end
-                
-                if data.Frame then
-                    if distance < 500 then
-                        data.Frame.BorderColor3 = Color3.fromRGB(0, 255, 100)
-                        data.GlowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-                    elseif distance < 1500 then
-                        data.Frame.BorderColor3 = Color3.fromRGB(255, 200, 50)
-                        data.GlowFrame.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-                    else
-                        data.Frame.BorderColor3 = Color3.fromRGB(100, 150, 255)
-                        data.GlowFrame.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
-                    end
-                end
+            local targetPos = data.Billboard.Adornee.Position
+            local distance = (targetPos - characterPos).Magnitude
+            
+            if data.DistanceLabel then
+                data.DistanceLabel.Text = "📍 " .. self.Utils.FormatDistance(distance)
             end
         end
     end
+end
+
+function Visuals:GetTableSize(t)
+    local count = 0
+    for _ in pairs(t) do count = count + 1 end
+    return count
 end
 
 return Visuals
