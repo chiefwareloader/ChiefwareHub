@@ -62,7 +62,7 @@ function Teleport:SetupUI()
     -- Sea Teleport Buttons
 
     local Button = teleportTab:Button({
-    Title = "Teleport to first sea",
+    Title = "Teleport to First Sea",
     Locked = false,
     Callback = function()
         -- ...

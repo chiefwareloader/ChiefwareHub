@@ -11,6 +11,11 @@ function Misc.new(shared, ui)
     self.InfiniteJumpEnabled = false
     self.infiniteJumpConnection = nil
     
+    -- Speed variables
+    self.SpeedEnabled = false
+    self.speedMultiplier = 5
+    self.speedConnection = nil
+    
     return self
 end
 
@@ -24,6 +29,31 @@ function Misc:SetupUI()
         Value = false,
         Callback = function(state)
             self:ToggleWaterWalk(state)
+        end
+    })
+
+    miscTab:Toggle({
+        Title = "Speed",
+        Desc = "Allows you to change movement speed",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(state)
+            self:ToggleSpeed(state)
+        end
+    })
+
+    -- Speed Slider
+    miscTab:Slider({
+        Title = "Speed Multiplier",
+        Desc = "Adjusts the speed multiplier (1-20)",
+        Step = 0.5,
+        Value = {
+            Min = 1,
+            Max = 20,
+            Default = 5,
+        },
+        Callback = function(value)
+            self:UpdateSpeedMultiplier(value)
         end
     })
 
@@ -62,6 +92,47 @@ function Misc:ToggleWaterWalk(state)
         end
     else
         warn("_WorldOrigin not found in Workspace!")
+    end
+end
+
+function Misc:ToggleSpeed(enable)
+    if enable == self.SpeedEnabled then
+        return
+    end
+    
+    self.SpeedEnabled = enable
+    
+    -- Disconnect existing connection if any
+    if self.speedConnection then
+        self.speedConnection:Disconnect()
+        self.speedConnection = nil
+    end
+    
+    if enable then
+        -- Get current character
+        local player = self.Shared.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        self.speedConnection = self.Shared.RunService.RenderStepped:Connect(function(dt)
+            if self.SpeedEnabled and humanoid and humanoid.Parent then
+                if humanoid.MoveDirection.Magnitude > 0 then
+                    -- Moves the character's CFrame directly using MoveDirection
+                    rootPart.CFrame = rootPart.CFrame + (humanoid.MoveDirection * self.speedMultiplier * dt * 60)
+                end
+            end
+        end)
+        print("✅ Speed ENABLED (Multiplier: " .. self.speedMultiplier .. ")")
+    else
+        print("❌ Speed DISABLED")
+    end
+end
+
+function Misc:UpdateSpeedMultiplier(value)
+    self.speedMultiplier = value
+    if self.SpeedEnabled then
+        print("✅ Speed multiplier updated to: " .. value)
     end
 end
 
