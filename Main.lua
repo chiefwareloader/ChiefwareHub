@@ -36,6 +36,7 @@ local UI = Modules.UI.new(Shared)
 local Teleport = Modules.Teleport.new(Shared, UI)
 local Visuals = Modules.Visuals.new(Shared, UI)
 local Misc = Modules.Misc.new(Shared, UI)
+local Farm = Modules.Farm.new(Shared, UI)
 
 -- Setup UI
 UI:CreateWindow()
@@ -44,5 +45,6 @@ UI:CreateWindow()
 Teleport:SetupUI()
 Visuals:SetupUI()
 Misc:SetupUI()
+Farm:SetupUI()
 
 print("✅ Chiefware Hub loaded successfully!")
