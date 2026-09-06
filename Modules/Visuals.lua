@@ -99,6 +99,8 @@ function Visuals:CreateIslandESP(island)
     billboard.Adornee = island
     billboard.MaxDistance = 5000
     billboard.AlwaysOnTop = true
+    billboard.Enabled = true  -- ADD THIS: Ensure it's enabled
+    billboard.ClipsDescendants = false  -- ADD THIS: Prevents clipping
     billboard.Parent = island
     
     local frame = Instance.new("Frame")
@@ -145,6 +147,7 @@ function Visuals:CreateIslandESP(island)
     nameLabel.TextFont = Enum.Font.GothamBold
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+    nameLabel.TextScaled = false  -- ADD THIS: Prevents auto-scaling issues
     nameLabel.Parent = frame
     
     local distanceLabel = Instance.new("TextLabel")
@@ -158,6 +161,7 @@ function Visuals:CreateIslandESP(island)
     distanceLabel.TextFont = Enum.Font.GothamMedium
     distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
     distanceLabel.TextYAlignment = Enum.TextYAlignment.Top
+    distanceLabel.TextScaled = false  -- ADD THIS
     distanceLabel.Parent = frame
     
     local indicator = Instance.new("Frame")
@@ -172,6 +176,10 @@ function Visuals:CreateIslandESP(island)
     local indicatorCorner = Instance.new("UICorner")
     indicatorCorner.CornerRadius = UDim.new(1, 0)
     indicatorCorner.Parent = indicator
+    
+    -- ADD THIS: Force a render update
+    task.wait(0.1)
+    billboard.Enabled = true
     
     self.Shared.TweenService:Create(
         indicator,
