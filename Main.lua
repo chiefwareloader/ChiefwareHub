@@ -13,22 +13,14 @@ local Shared = {
     UserInputService = game:GetService("UserInputService"),
 }
 
--- Load modules with detailed debugging
+-- Load modules
 local Modules = {}
 local moduleNames = {"Utils", "UI", "Teleport", "Visuals", "Misc", "Farm"}
 
 for _, name in ipairs(moduleNames) do
     local url = "https://raw.githubusercontent.com/chiefwareloader/ChiefwareHub/main/Modules/" .. name .. ".lua"
-    print("Attempting to load: " .. name .. " from " .. url)
-    
     local success, result = pcall(function()
-        local content = game:HttpGet(url)
-        print("  Got content for: " .. name .. " (" .. string.len(content) .. " bytes)")
-        local func = loadstring(content)
-        if not func then
-            error("loadstring returned nil for: " .. name)
-        end
-        return func()
+        return loadstring(game:HttpGet(url))()
     end)
     
     if success and result then
@@ -36,18 +28,12 @@ for _, name in ipairs(moduleNames) do
         print("✅ Loaded module: " .. name)
     else
         warn("❌ Failed to load module: " .. name)
-        if not success then
-            warn("   Error: " .. tostring(result))
-        end
     end
 end
 
--- Print what modules loaded
-print("Loaded modules:", table.concat(moduleNames, ", "))
-
 -- Check if UI module loaded
 if not Modules.UI then
-    error("UI module failed to load! Cannot initialize hub.")
+    error("UI module failed to load!")
     return
 end
 
