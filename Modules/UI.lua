@@ -41,7 +41,7 @@ function UI:CreateWindow()
 
     -- Create tabs with consistent naming
     local tabConfigs = {
-        Farm = { Title = "Farm", Icon = "earth" },
+        Farm = { Title = "Farm", Icon = "hand-fist" },
         Teleport = { Title = "Teleport", Icon = "earth" },
         Visuals = { Title = "Visuals", Icon = "eye" },
         Misc = { Title = "Misc", Icon = "badge-plus" },

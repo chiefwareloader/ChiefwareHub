@@ -80,7 +80,7 @@ function Farm:ToggleBringMobs(enable)
                         if distance < 500 and distance > 5 then
                             -- Move enemy towards player in increments
                             local direction = (playerPos - enemyPos).Unit
-                            local newPos = enemyPos + (direction * 5) -- Move 5 studs per frame
+                            local newPos = enemyPos + (direction * 0.1) -- Move 5 studs per frame
                             
                             -- Keep the enemy at a minimum distance from player
                             local newDistance = (playerPos - newPos).Magnitude
