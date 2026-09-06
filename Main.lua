@@ -1,5 +1,5 @@
 -- Main.lua - Chiefware Hub Loader
-print("Loading chiefware...")
+print("Loading Chiefware Hub...")
 
 -- Load WindUI
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
@@ -45,4 +45,4 @@ Teleport:SetupUI()
 Visuals:SetupUI()
 Misc:SetupUI()
 
-print("✅ chiefware loaded successfully!")
+print("✅ Chiefware Hub loaded successfully!")
