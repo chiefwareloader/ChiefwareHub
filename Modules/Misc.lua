@@ -34,7 +34,7 @@ function Misc:SetupUI()
 
     miscTab:Toggle({
         Title = "Speed",
-        Desc = "Allows you to change movement speed",
+        Desc = "Allows you to move faster",
         Type = "Checkbox",
         Value = false,
         Callback = function(state)
@@ -45,12 +45,12 @@ function Misc:SetupUI()
     -- Speed Slider
     miscTab:Slider({
         Title = "Speed Multiplier",
-        Desc = "Adjusts the speed multiplier (1-20)",
+        Desc = "Adjusts speed",
         Step = 0.5,
         Value = {
             Min = 1,
-            Max = 20,
-            Default = 5,
+            Max = 3,
+            Default = 1,
         },
         Callback = function(value)
             self:UpdateSpeedMultiplier(value)
